@@ -1,0 +1,102 @@
+# Orquestração de PRODUÇÃO. Roda no VPS, não na sua máquina local
+# (para desenvolvimento local, use api/docker-compose.yml, que só sobe
+# o MySQL). Uso: docker compose -f docker-compose.prod.yml up -d --build
+#
+# Arquitetura:
+#   Traefik recebe todo tráfego em 80/443, emite/renova o certificado
+#   TLS via Let's Encrypt automaticamente e roteia por caminho:
+#     alertas.tuniku.com/api/*  -> container "api"
+#     alertas.tuniku.com/*      -> container "web"
+#   mysql fica isolado na rede interna, sem porta exposta ao host.
+
+services:
+  traefik:
+    image: traefik:v3.1
+    container_name: traefik
+    restart: unless-stopped
+    command:
+      - "--providers.docker=true"
+      - "--providers.docker.exposedbydefault=false"
+      - "--entrypoints.web.address=:80"
+      - "--entrypoints.websecure.address=:443"
+      - "--entrypoints.web.http.redirections.entrypoint.to=websecure"
+      - "--entrypoints.web.http.redirections.entrypoint.scheme=https"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge=true"
+      - "--certificatesresolvers.letsencrypt.acme.httpchallenge.entrypoint=web"
+      - "--certificatesresolvers.letsencrypt.acme.email=${ACME_EMAIL}"
+      - "--certificatesresolvers.letsencrypt.acme.storage=/letsencrypt/acme.json"
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - letsencrypt-data:/letsencrypt
+    networks:
+      - alertas
+
+  mysql:
+    image: mysql:8.0
+    container_name: alertas-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: alertas
+      MYSQL_USER: alertas
+      MYSQL_PASSWORD: ${DB_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
+    volumes:
+      - mysql-data:/var/lib/mysql
+    networks:
+      - alertas
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  api:
+    build:
+      context: ./api
+    container_name: alertas-api
+    restart: unless-stopped
+    volumes:
+      # .env fica fora da imagem (não vai pro git nem pro build) e é
+      # montado em runtime — trocar uma senha não exige rebuild.
+      - ./api/.env:/var/www/html/.env:ro
+      - api-storage:/var/www/html/storage
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - alertas
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertas-api.rule=Host(`alertas.tuniku.com`) && PathPrefix(`/api`)"
+      - "traefik.http.routers.alertas-api.entrypoints=websecure"
+      - "traefik.http.routers.alertas-api.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.alertas-api.priority=10"
+      - "traefik.http.services.alertas-api.loadbalancer.server.port=80"
+
+  web:
+    build:
+      context: ./web
+      args:
+        VITE_API_URL: https://alertas.tuniku.com/api
+    container_name: alertas-web
+    restart: unless-stopped
+    networks:
+      - alertas
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.alertas-web.rule=Host(`alertas.tuniku.com`)"
+      - "traefik.http.routers.alertas-web.entrypoints=websecure"
+      - "traefik.http.routers.alertas-web.tls.certresolver=letsencrypt"
+      - "traefik.http.routers.alertas-web.priority=1"
+      - "traefik.http.services.alertas-web.loadbalancer.server.port=80"
+
+networks:
+  alertas:
+
+volumes:
+  mysql-data:
+  api-storage:
+  letsencrypt-data:

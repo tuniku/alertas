@@ -1,0 +1,36 @@
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: alertas-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: alertas
+      MYSQL_USER: alertas
+      MYSQL_PASSWORD: alertas
+      MYSQL_ROOT_PASSWORD: root
+    ports:
+      - "3306:3306"
+    volumes:
+      - alertas-mysql-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-uroot", "-proot"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # Opcional: interface web para inspecionar o banco em http://localhost:8080
+  phpmyadmin:
+    image: phpmyadmin:5
+    container_name: alertas-phpmyadmin
+    restart: unless-stopped
+    environment:
+      PMA_HOST: mysql
+      PMA_USER: root
+      PMA_PASSWORD: root
+    ports:
+      - "8080:80"
+    depends_on:
+      - mysql
+
+volumes:
+  alertas-mysql-data:
