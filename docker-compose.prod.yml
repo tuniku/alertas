@@ -1,41 +1,23 @@
 # Orquestração de PRODUÇÃO. Roda no VPS, não na sua máquina local
-# (para desenvolvimento local, use api/docker-compose.yml, que só sobe
-# o MySQL). Uso: docker compose -f docker-compose.prod.yml up -d --build
+# (para desenvolvimento local, use api/docker-compose.yml, que sobe um
+# MySQL em container). Uso:
+#   docker compose -f docker-compose.prod.yml up -d --build
 #
 # Arquitetura: este VPS já usa um Nginx do sistema (fora do Docker) +
-# Certbot como porta de entrada única em 80/443 para vários domínios
-# (mesmo padrão dos outros sites hospedados aqui). Por isso a API e o
-# frontend do alertas só publicam suas portas em 127.0.0.1 — não ficam
-# expostos diretamente à internet. Quem fala com o mundo é o Nginx do
-# sistema, com um site configurado em
-# /etc/nginx/sites-available/alertas.tuniku.com (modelo em
-# deploy/alertas.tuniku.com.conf neste repositório), que faz:
+# Certbot como porta de entrada única em 80/443 para vários domínios, e
+# um MySQL do sistema compartilhado pelos projetos hospedados aqui
+# (acessível pelo phpMyAdmin em adbd.tuniku.com). O alertas segue esse
+# mesmo padrão: os containers só publicam portas em 127.0.0.1 e o banco
+# fica no MySQL do host, não em container.
 #
 #   alertas.tuniku.com/api/*  -> 127.0.0.1:8082 (container "api")
 #   alertas.tuniku.com/*      -> 127.0.0.1:8081 (container "web")
+#   banco                     -> MySQL do host (via host.docker.internal)
 #
-# mysql fica isolado na rede interna do Docker, sem porta publicada.
+# O site do Nginx fica em /etc/nginx/sites-available/alertas.tuniku.com
+# (modelo versionado em deploy/alertas.tuniku.com.conf).
 
 services:
-  mysql:
-    image: mysql:8.0
-    container_name: alertas-mysql
-    restart: unless-stopped
-    environment:
-      MYSQL_DATABASE: alertas
-      MYSQL_USER: alertas
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD}
-    volumes:
-      - mysql-data:/var/lib/mysql
-    networks:
-      - alertas
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${DB_ROOT_PASSWORD}"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
   api:
     build:
       context: ./api
@@ -43,16 +25,17 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8082:80"
+    # Faz "host.docker.internal" resolver para o IP do host dentro do
+    # container — é assim que a API alcança o MySQL do sistema, que
+    # escuta em 127.0.0.1 do ponto de vista do host (DB_HOST no
+    # api/.env deve usar esse nome).
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     volumes:
       # .env fica fora da imagem (não vai pro git nem pro build) e é
       # montado em runtime — trocar uma senha não exige rebuild.
       - ./api/.env:/var/www/html/.env:ro
       - api-storage:/var/www/html/storage
-    depends_on:
-      mysql:
-        condition: service_healthy
-    networks:
-      - alertas
 
   web:
     build:
@@ -63,12 +46,6 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8081:80"
-    networks:
-      - alertas
-
-networks:
-  alertas:
 
 volumes:
-  mysql-data:
   api-storage:
