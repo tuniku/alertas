@@ -100,6 +100,14 @@ grep -r bind-address /etc/mysql/
 # esperado: 0.0.0.0 ou * ; se for 127.0.0.1, altere e rode: systemctl restart mysql
 ```
 
+Libere a porta 3306 no firewall **apenas para as faixas privadas do Docker** (`172.16.0.0/12` cobre as redes que o Docker cria, de 172.17.x a 172.31.x). Sem isso o `ufw` descarta os pacotes vindos do container e a conexão falha com `Operation timed out` — não com `Connection refused`, o que torna o diagnóstico menos óbvio:
+
+```bash
+ufw allow from 172.16.0.0/12 to any port 3306 proto tcp
+ufw reload
+ufw status | grep 3306
+```
+
 ## 5. Configure os segredos da aplicação
 
 ```bash
