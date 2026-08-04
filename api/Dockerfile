@@ -1,7 +1,13 @@
 # Imagem de produção da API: PHP-FPM + Nginx + Supervisord no mesmo
 # container. Um único container simplifica o compose (menos serviços
 # para orquestrar) sem abrir mão de nginx na frente do PHP.
-FROM php:8.3-fpm-alpine
+#
+# Versão do PHP alinhada com o composer.lock: quem gerou o lock local
+# tinha PHP 8.4 instalado, então pacotes como symfony/clock e
+# nesbot/carbon ficaram travados em versões que exigem PHP >= 8.4.1.
+# Trocar a imagem (em vez de mexer no lock) evita reintroduzir
+# divergência entre o que foi testado localmente e o que roda em produção.
+FROM php:8.4-fpm-alpine
 
 RUN apk add --no-cache nginx supervisor $PHPIZE_DEPS \
     && docker-php-ext-install pdo pdo_mysql
