@@ -12,7 +12,13 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        //
+        // Sem isto, uma requisição não autenticada faz o middleware
+        // Authenticate tentar redirecionar para a rota chamada "login"
+        // — que não existe aqui, porque este projeto é API pura, sem
+        // telas no backend. O resultado seria um 500 ("Route [login] not
+        // defined") no lugar do 401 esperado. Retornar null desliga o
+        // redirect e faz o Laravel responder 401 em JSON.
+        $middleware->redirectGuestsTo(fn () => null);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         // Sistemas externos nem sempre enviam "Accept: application/json";
