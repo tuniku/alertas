@@ -4,22 +4,26 @@ Runbook para colocar `alertas.tuniku.com` no ar no VPS (`srv1108610.hstgr.cloud`
 
 ## Arquitetura
 
+Esse VPS já hospeda outros projetos seus (`adbd.tuniku.com`, `amanda15anos.tuniku.com`, sites em `salinhabh.com` etc.) atrás de um **Nginx de sistema** (instalado via apt, não em container) + **Certbot**, com um arquivo de site por domínio em `/etc/nginx/sites-enabled/`. O `alertas` segue o mesmo padrão em vez de trazer seu próprio proxy de borda:
+
 ```
-                    Traefik (80/443, TLS automático via Let's Encrypt)
+                 Nginx do sistema (systemd, fora do Docker)
+                 80/443 — mesmo Nginx que serve os outros domínios
                        │
         ┌──────────────┼──────────────┐
-        │ /api/*                      │ /* 
+        │ /api/*                      │ /*
         ▼                              ▼
+  127.0.0.1:8082                 127.0.0.1:8081
    container "api"               container "web"
    PHP-FPM + Nginx                Nginx servindo o
    (Laravel)                      build estático do React
         │
         ▼
    container "mysql"
-   (rede interna, sem porta exposta)
+   (rede interna do Docker, sem porta publicada)
 ```
 
-Frontend e API respondem no mesmo domínio (`alertas.tuniku.com`), diferenciados só pelo caminho `/api`. Por isso o Sanctum não precisa de configuração de CORS nem de domínio stateful — do ponto de vista do navegador é tudo a mesma origem.
+Frontend e API respondem no mesmo domínio (`alertas.tuniku.com`), diferenciados só pelo caminho `/api`. Por isso o Sanctum não precisa de configuração de CORS nem de domínio stateful — do ponto de vista do navegador é tudo a mesma origem. O TLS é emitido pelo Certbot no Nginx do sistema, do mesmo jeito que já é feito para os outros domínios desse servidor.
 
 ## 1. Aponte o domínio para o VPS
 
@@ -29,14 +33,14 @@ No hPanel da Hostinger → **Domínios** → `tuniku.com` → **Gerenciador de D
 |---|---|---|---|
 | A | `alertas` | `72.61.42.227` | padrão |
 
-Propagação costuma levar de alguns minutos a poucas horas. Confirme antes de seguir:
+Confirme a propagação antes de seguir:
 
 ```bash
 dig +short alertas.tuniku.com
 # deve retornar 72.61.42.227
 ```
 
-Não avance para o passo 4 (emissão do certificado) antes disso — o desafio HTTP do Let's Encrypt precisa que o domínio já resolva para o servidor, senão a emissão falha.
+Não avance para o passo 6 (emissão do certificado) antes disso — o desafio HTTP do Let's Encrypt precisa que o domínio já resolva para o servidor.
 
 ## 2. Acesse o VPS e prepare o ambiente
 
@@ -46,20 +50,19 @@ Pelo hPanel: VPS → **Terminal** (abre um shell no navegador), ou via SSH local
 ssh root@72.61.42.227
 ```
 
-Instale o Docker, caso o painel "Gerenciador Docker" ainda não tenha provisionado o Docker Engine (confira com `docker --version` antes de rodar isto):
+Confira se o Docker já está instalado:
+
+```bash
+docker --version
+```
+
+Se não estiver:
 
 ```bash
 curl -fsSL https://get.docker.com | sh
 ```
 
-Abra o firewall para HTTP/HTTPS (o SSH já deve estar liberado, senão você não teria conectado):
-
-```bash
-ufw allow 22/tcp
-ufw allow 80/tcp
-ufw allow 443/tcp
-ufw enable   # confirme com "y" — não feche a sessão SSH atual antes de confirmar que a porta 22 está liberada
-```
+O firewall (`ufw`) e o Nginx/Certbot já devem estar configurados nesse servidor pelos projetos anteriores — não é preciso mexer neles para o `alertas`, só adicionar um novo site (passo 6).
 
 ## 3. Clone o repositório
 
@@ -68,8 +71,6 @@ mkdir -p /opt && cd /opt
 git clone https://github.com/tuniku/alertas.git
 cd alertas
 ```
-
-Repositório privado? O `git clone` vai pedir usuário + token (mesmo Personal Access Token usado no seu `git push` local) — ou configure uma chave SSH de deploy no GitHub (Settings → Deploy keys) e clone via `git@github.com:tuniku/alertas.git`.
 
 ## 4. Configure os segredos
 
@@ -91,17 +92,17 @@ APP_URL=https://alertas.tuniku.com
 DB_HOST=mysql          # nome do serviço no docker-compose, não 127.0.0.1
 DB_DATABASE=alertas
 DB_USERNAME=alertas
-DB_PASSWORD=            # a mesma senha que você definiu no .env da raiz
+DB_PASSWORD=            # a MESMA senha que você definiu no .env da raiz
 ```
 
-Gere a `APP_KEY` (precisa do PHP, mas o container ainda não existe nesse ponto — gere via um container temporário):
+Gere a `APP_KEY`:
 
 ```bash
 docker run --rm -v "$PWD/api":/app -w /app composer:2 sh -c \
   "composer install --no-dev --no-interaction --quiet && php artisan key:generate --show"
 ```
 
-Copie o valor `base64:...` retornado para `APP_KEY=` em `api/.env`.
+Copie o valor **completo, incluindo o prefixo `base64:`** para `APP_KEY=` em `api/.env`. Sem o prefixo, o Laravel usa a chave crua em vez de decodificá-la, e qualquer recurso que dependa de criptografia (cookies, links assinados, redefinição de senha) quebra silenciosamente.
 
 ## 5. Suba a stack
 
@@ -109,14 +110,34 @@ Copie o valor `base64:...` retornado para `APP_KEY=` em `api/.env`.
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Isso builda as imagens de `api/` e `web/`, sobe `mysql`, `traefik`, `api` e `web`, roda `php artisan migrate --force` automaticamente (via `api/docker/entrypoint.sh`) e o Traefik emite o certificado TLS assim que detecta os containers com as labels — leva menos de um minuto normalmente.
+Isso builda as imagens de `api/` e `web/`, sobe `mysql`, `api` (publicado só em `127.0.0.1:8082`) e `web` (só em `127.0.0.1:8081`), e roda `php artisan migrate --force` automaticamente via `api/docker/entrypoint.sh`.
 
 Acompanhe:
 
 ```bash
-docker compose -f docker-compose.prod.yml logs -f traefik   # confirme a emissão do certificado
-docker compose -f docker-compose.prod.yml logs -f api       # confirme que o migrate rodou sem erro
+docker compose -f docker-compose.prod.yml logs -f api    # confirme que o migrate rodou sem erro
+docker compose -f docker-compose.prod.yml ps             # confirme os 3 containers "Up"/"healthy"
 ```
+
+Nesse ponto o app ainda não está acessível pela internet — falta o passo 6 (site no Nginx do sistema).
+
+## 6. Registre o site no Nginx do sistema e emita o certificado
+
+```bash
+cp deploy/alertas.tuniku.com.conf /etc/nginx/sites-available/alertas.tuniku.com
+ln -s /etc/nginx/sites-available/alertas.tuniku.com /etc/nginx/sites-enabled/
+nginx -t && systemctl reload nginx
+```
+
+`nginx -t` valida a sintaxe antes de recarregar — se der erro, **não** rode o `systemctl reload` (evita derrubar os outros sites hospedados no mesmo Nginx).
+
+Emita o certificado:
+
+```bash
+certbot --nginx -d alertas.tuniku.com
+```
+
+O Certbot reescreve automaticamente `/etc/nginx/sites-available/alertas.tuniku.com` para adicionar o bloco HTTPS (porta 443) e o redirect de HTTP para HTTPS — é esperado o arquivo mudar sozinho depois desse comando.
 
 Acesse **https://alertas.tuniku.com** e faça login com o usuário do seeder (`admin@alertas.local` / `admin123` — troque a senha imediatamente pela tela de Usuários, já que agora está em produção).
 
@@ -136,17 +157,18 @@ git pull
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-O `entrypoint.sh` da API roda `migrate --force` a cada subida do container — toda migration nova commitada no repositório é aplicada automaticamente no próximo deploy, sem passo manual.
+Isso só afeta os containers `api`, `web` e `mysql` — não mexe no Nginx do sistema nem nos outros sites. O `entrypoint.sh` da API roda `migrate --force` a cada subida do container, então toda migration nova commitada no repositório é aplicada automaticamente, sem passo manual.
 
 ## Comandos úteis
 
 | Comando | Efeito |
 |---|---|
 | `docker compose -f docker-compose.prod.yml ps` | Status dos containers |
-| `docker compose -f docker-compose.prod.yml logs -f <serviço>` | Logs em tempo real (`api`, `web`, `mysql`, `traefik`) |
+| `docker compose -f docker-compose.prod.yml logs -f <serviço>` | Logs em tempo real (`api`, `web`, `mysql`) |
 | `docker compose -f docker-compose.prod.yml exec api php artisan tinker` | Console interativo do Laravel em produção |
 | `docker compose -f docker-compose.prod.yml exec mysql mysql -u root -p alertas` | Acesso direto ao MySQL |
 | `docker compose -f docker-compose.prod.yml restart api` | Reinicia só a API, sem rebuild |
+| `certbot renew --dry-run` | Testa a renovação do certificado sem aplicar (o Certbot já instala um timer/cron para renovar automaticamente) |
 
 ## Backup do banco
 
@@ -159,6 +181,7 @@ Automatizar isso com um cron/scheduled task é uma das próximas etapas recomend
 
 ## Troubleshooting
 
-- **Certificado não emite / Traefik fica reclamando de "unable to obtain ACME certificate"**: confira se o DNS já propagou (`dig +short alertas.tuniku.com`) e se as portas 80/443 estão liberadas no `ufw` — o desafio HTTP do Let's Encrypt precisa bater na porta 80 do seu servidor.
-- **`502 Bad Gateway` em `/api`**: normalmente é o container `api` ainda subindo (aguardando o `mysql` ficar healthy) — `docker compose -f docker-compose.prod.yml logs api` mostra o motivo.
+- **`address already in use` na porta 80/443 ao subir algum serviço**: é o Nginx do sistema, que já usa essas portas para os outros domínios — os containers do `alertas` nunca devem tentar publicar 80/443 diretamente (por isso usam `127.0.0.1:8081`/`127.0.0.1:8082`). Se aparecer, confira se algum serviço no `docker-compose.prod.yml` ganhou uma porta pública por engano.
+- **`502 Bad Gateway` em `/api` ou no site**: normalmente é o container `api`/`web` ainda subindo, ou caído — `docker compose -f docker-compose.prod.yml ps` e `logs` mostram o motivo. Confirme também que `127.0.0.1:8081`/`8082` respondem localmente: `curl http://127.0.0.1:8082/api/tipos-disparo` (vai dar 401, mas confirma que o container responde).
+- **Certificado não emite / Certbot reclama do desafio HTTP**: confira se o DNS já propagou (`dig +short alertas.tuniku.com`) e se o site já está em `sites-enabled` com `nginx -t` passando antes de rodar o certbot.
 - **Tela em branco no frontend**: confira no console do navegador se as chamadas estão indo para `https://alertas.tuniku.com/api/...`; se estiverem indo para `localhost`, o build foi feito sem o `VITE_API_URL` correto — rode `docker compose -f docker-compose.prod.yml up -d --build web` de novo.
