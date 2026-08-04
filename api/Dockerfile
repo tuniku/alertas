@@ -9,8 +9,11 @@
 # divergência entre o que foi testado localmente e o que roda em produção.
 FROM php:8.4-fpm-alpine
 
-RUN apk add --no-cache nginx supervisor $PHPIZE_DEPS \
-    && docker-php-ext-install pdo pdo_mysql
+# icu-dev + ext-intl: o Laravel 12 usa a classe Number (que depende de
+# intl) em vários pontos de formatação — sem ela, comandos como
+# "artisan db:show" abortam mesmo com a conexão funcionando.
+RUN apk add --no-cache nginx supervisor icu-dev $PHPIZE_DEPS \
+    && docker-php-ext-install pdo pdo_mysql intl
 
 WORKDIR /var/www/html
 

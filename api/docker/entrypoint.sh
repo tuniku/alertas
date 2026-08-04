@@ -9,9 +9,34 @@ set -e
 # pronta no exato instante em que o healthcheck reporta OK). Este loop
 # é a rede de segurança: tenta abrir uma conexão real via Laravel/PDO
 # antes de seguir.
+#
+# O teste usa PDO puro em vez de "artisan db:show": aquele comando
+# formata a saída com a classe Number do Laravel e falha quando a
+# extensão intl não está presente — o que faz um banco perfeitamente
+# saudável parecer indisponível e prende este script em loop.
 echo "Aguardando o banco de dados aceitar conexões..."
 tries=0
-until php artisan db:show > /dev/null 2>&1; do
+until php -r '
+  $env = [];
+  foreach (file("/var/www/html/.env", FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $linha) {
+      $linha = trim($linha);
+      if ($linha === "" || $linha[0] === "#" || ! str_contains($linha, "=")) {
+          continue;
+      }
+      [$chave, $valor] = explode("=", $linha, 2);
+      $env[trim($chave)] = trim($valor, " \"\x27");
+  }
+  try {
+      new PDO(
+          sprintf("mysql:host=%s;port=%s;dbname=%s", $env["DB_HOST"] ?? "mysql", $env["DB_PORT"] ?? "3306", $env["DB_DATABASE"] ?? "alertas"),
+          $env["DB_USERNAME"] ?? "root",
+          $env["DB_PASSWORD"] ?? ""
+      );
+      exit(0);
+  } catch (Throwable $e) {
+      exit(1);
+  }
+' > /dev/null 2>&1; do
   tries=$((tries + 1))
   if [ "$tries" -ge 30 ]; then
     echo "Banco de dados não respondeu após 60s, abortando."
