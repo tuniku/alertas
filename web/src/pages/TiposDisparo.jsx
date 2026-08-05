@@ -7,11 +7,26 @@ const FORM_VAZIO = { nome: '', driver: '', ativo: true, configuracao: {} };
 // Um driver novo sem entrada aqui simplesmente mostra o nome bruto do campo.
 const ROTULOS_CAMPO = {
   webhook_url: 'URL do webhook',
+  bot_token: 'Token do bot',
+  chat_id: 'ID do chat',
 };
 
 const AJUDA_CAMPO = {
   webhook_url:
     'No Discord: Configurações do canal → Integrações → Webhooks → Copiar URL do webhook.',
+  bot_token:
+    'No Telegram: converse com o @BotFather, envie /newbot e copie o token devolvido.',
+  chat_id:
+    'Adicione o bot ao grupo/canal (como admin, se for canal), envie uma mensagem lá e abra ' +
+    'https://api.telegram.org/bot<TOKEN>/getUpdates para ver o chat.id. Grupos e canais têm id negativo.',
+};
+
+// Placeholder por campo, com o mesmo critério dos rótulos: um campo sem
+// entrada aqui simplesmente não mostra exemplo.
+const PLACEHOLDER_CAMPO = {
+  webhook_url: 'https://discord.com/api/webhooks/...',
+  bot_token: '123456789:AAH...',
+  chat_id: '-1001234567890',
 };
 
 export default function TiposDisparo() {
@@ -99,8 +114,9 @@ export default function TiposDisparo() {
     <div>
       <h2>Tipos de disparo</h2>
       <p className="muted-left">
-        Cada tipo é um destino configurado (um canal do Discord, e futuramente
-        e-mail, Telegram ou uma lâmpada). Um alerta pode usar vários ao mesmo tempo.
+        Cada tipo é um destino configurado (um canal do Discord, um chat do
+        Telegram e, futuramente, e-mail ou uma lâmpada). Um alerta pode usar
+        vários ao mesmo tempo.
       </p>
 
       <form className="form-grid" onSubmit={salvar}>
@@ -109,7 +125,7 @@ export default function TiposDisparo() {
           <input
             value={form.nome}
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
-            placeholder="ex.: Discord #alertas-carbel"
+            placeholder="ex.: Discord #alertas-carbel, Telegram Suporte"
             required
           />
         </label>
@@ -154,7 +170,7 @@ export default function TiposDisparo() {
                   configuracao: { ...form.configuracao, [campo]: e.target.value },
                 })
               }
-              placeholder={campo === 'webhook_url' ? 'https://discord.com/api/webhooks/...' : ''}
+              placeholder={PLACEHOLDER_CAMPO[campo] || ''}
               required
             />
             {AJUDA_CAMPO[campo] && <small>{AJUDA_CAMPO[campo]}</small>}

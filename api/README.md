@@ -65,7 +65,7 @@ php artisan queue:work
 
 Sem o worker rodando, os jobs ficam acumulados na tabela `jobs` e nada é enviado. Em produção há um container `worker` dedicado (ver `docker-compose.prod.yml`).
 
-Canais disponíveis hoje: **Discord** (webhook). Para adicionar e-mail, Telegram, Tuya e outros, veja [`docs/NOVO-DRIVER.md`](docs/NOVO-DRIVER.md) — é uma classe nova e uma linha na factory, sem migration nem alteração no frontend.
+Canais disponíveis hoje: **Discord** (webhook) e **Telegram** (bot) — a configuração do lado do Telegram está em [`docs/TELEGRAM.md`](docs/TELEGRAM.md). Para adicionar e-mail, Tuya e outros, veja [`docs/NOVO-DRIVER.md`](docs/NOVO-DRIVER.md) — é uma classe nova e uma linha na factory, sem migration nem alteração no frontend.
 
 Cada tentativa fica registrada em `notificacao_logs` (sucesso ou mensagem de erro), e a tela "Tipos de disparo" tem um botão **Testar** que envia uma notificação fictícia para validar a configuração sem esperar um alerta real.
 
