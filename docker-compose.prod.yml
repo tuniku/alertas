@@ -13,6 +13,7 @@
 #   alertas.tuniku.com/api/*  -> 127.0.0.1:8082 (container "api")
 #   alertas.tuniku.com/*      -> 127.0.0.1:8081 (container "web")
 #   banco                     -> MySQL do host (via host.docker.internal)
+#   notificações              -> container "worker", consumindo a fila
 #
 # O site do Nginx fica em /etc/nginx/sites-available/alertas.tuniku.com
 # (modelo versionado em deploy/alertas.tuniku.com.conf).
@@ -36,6 +37,28 @@ services:
       # montado em runtime — trocar uma senha não exige rebuild.
       - ./api/.env:/var/www/html/.env:ro
       - api-storage:/var/www/html/storage
+
+  # Processa a fila de notificações (Discord e, futuramente, e-mail,
+  # Telegram, Tuya). Roda a MESMA imagem da API, só que com outro
+  # comando: sobrepõe o entrypoint para não rodar migrations nem subir
+  # nginx/php-fpm — este container só consome jobs.
+  #
+  # --max-time=3600 recicla o worker de hora em hora: processos PHP de
+  # vida longa acumulam memória e não enxergam código novo após um
+  # deploy. O "restart: unless-stopped" traz ele de volta em seguida.
+  worker:
+    build:
+      context: ./api
+    container_name: alertas-worker
+    restart: unless-stopped
+    entrypoint: ["php", "artisan", "queue:work", "--tries=3", "--max-time=3600", "--sleep=3"]
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    volumes:
+      - ./api/.env:/var/www/html/.env:ro
+      - api-storage:/var/www/html/storage
+    depends_on:
+      - api
 
   web:
     build:

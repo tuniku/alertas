@@ -145,13 +145,16 @@ Copie o valor **completo, incluindo o prefixo `base64:`** para `APP_KEY=` em `ap
 docker compose -f docker-compose.prod.yml up -d --build
 ```
 
-Isso builda as imagens de `api/` e `web/`, sobe `api` (publicado só em `127.0.0.1:8082`) e `web` (só em `127.0.0.1:8081`), e roda `php artisan migrate --force` automaticamente via `api/docker/entrypoint.sh`.
+Isso builda as imagens de `api/` e `web/`, sobe `api` (publicado só em `127.0.0.1:8082`), `web` (só em `127.0.0.1:8081`) e `worker` (consome a fila de notificações), e roda `php artisan migrate --force` automaticamente via `api/docker/entrypoint.sh`.
+
+> **Atenção ao atualizar de uma versão anterior:** confira que `api/.env` tem `QUEUE_CONNECTION=database`. Se ficar em `sync`, as notificações rodam dentro da requisição do sistema externo em vez de irem para a fila, e o container `worker` fica ocioso.
 
 Acompanhe:
 
 ```bash
-docker compose -f docker-compose.prod.yml logs -f api    # confirme que o migrate rodou sem erro
-docker compose -f docker-compose.prod.yml ps             # confirme os 2 containers "Up"
+docker compose -f docker-compose.prod.yml logs -f api      # confirme que o migrate rodou sem erro
+docker compose -f docker-compose.prod.yml logs -f worker   # confirme o worker processando a fila
+docker compose -f docker-compose.prod.yml ps               # confirme os 3 containers "Up"
 ```
 
 Crie o usuário inicial (**só no primeiro deploy**):

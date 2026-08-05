@@ -35,19 +35,39 @@ O `docker-compose.yml` deste repositório sobe só o MySQL (porta 3306) e, opcio
 |---|---|
 | `projetos` | Agrupador de alertas (id, nome) |
 | `alertas` | Tipo de evento que um sistema externo pode disparar |
-| `tipos_disparo` | Estrutura de referência (id, nome) — formas de notificação serão detalhadas em etapa futura |
+| `tipos_disparo` | Canais de notificação configurados (driver + configuração JSON) |
+| `alerta_tipo_disparo` | Ligação N:N — um alerta pode notificar em vários canais |
 | `alerta_logs` | Histórico: todo evento recebido gera um registro, sempre |
 | `alertas_ativos` | Controle de deduplicação (um registro ativo por alerta) |
+| `notificacao_logs` | Cada tentativa de notificação, com sucesso ou erro |
 | `users` | Usuários do painel (auth padrão Laravel + Sanctum) |
+| `jobs` / `failed_jobs` | Fila de notificações (driver `database`) |
 
 Decisões de modelagem e o porquê de cada uma:
 
 - **`alertas.codigo` (slug único global)** — é o identificador que o sistema externo envia no disparo. Um código legível ("backup-falhou") não quebra quando o banco é recriado entre ambientes, ao contrário do id numérico. É único globalmente porque o endpoint de disparo é público e não carrega contexto de projeto nesta etapa.
 - **`alertas.nome`** — campo adicional ao que foi especificado, para dar um rótulo legível nas telas (o código é técnico).
 - **`alertas.expiracao_minutos`** — origem da data de expiração do alerta ativo, conforme definido: o TTL vem do cadastro do alerta. `null` significa que o alerta ativo nunca expira e bloqueia duplicados até ser fechado manualmente.
-- **`alertas.tipo_disparo_id` nullable** — a tabela `tipos_disparo` ainda está vazia; obrigar o vínculo agora impediria qualquer cadastro.
+- **`tipos_disparo.driver` + `configuracao` (JSON)** — cada registro é um destino concreto ("Discord #alertas-carbel"), não uma categoria abstrata. Guardar a configuração em JSON evita uma coluna nova a cada integração futura: o driver de e-mail precisa de remetente e destinatário, o da Tuya precisa de `device_id` e credenciais, e nenhum deles força alteração de schema.
+- **`alerta_tipo_disparo` (N:N)** — um alerta crítico pode postar no Discord e acender a lâmpada ao mesmo tempo. Substituiu a FK única `alertas.tipo_disparo_id` da primeira versão.
 - **`alertas_ativos.created_at/updated_at`** — usados como "data de criação" e "data de atualização" da especificação, aproveitando os timestamps automáticos do Eloquent.
 - **`alertas_ativos.fechado_por` nullable com `nullOnDelete`** — quando o registro é encerrado pelo próprio sistema (expiração), fica `null`; quando fechado manualmente, guarda o usuário.
+
+## Notificações
+
+Quando um **alerta ativo novo** é criado, a API enfileira um job por canal vinculado ao alerta. Eventos deduplicados não notificam — é justamente o propósito da deduplicação.
+
+A fila usa o driver `database`, então em desenvolvimento é preciso rodar um worker em outro terminal:
+
+```bash
+php artisan queue:work
+```
+
+Sem o worker rodando, os jobs ficam acumulados na tabela `jobs` e nada é enviado. Em produção há um container `worker` dedicado (ver `docker-compose.prod.yml`).
+
+Canais disponíveis hoje: **Discord** (webhook). Para adicionar e-mail, Telegram, Tuya e outros, veja [`docs/NOVO-DRIVER.md`](docs/NOVO-DRIVER.md) — é uma classe nova e uma linha na factory, sem migration nem alteração no frontend.
+
+Cada tentativa fica registrada em `notificacao_logs` (sucesso ou mensagem de erro), e a tela "Tipos de disparo" tem um botão **Testar** que envia uma notificação fictícia para validar a configuração sem esperar um alerta real.
 
 ## Endpoint público de disparo
 

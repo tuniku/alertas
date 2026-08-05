@@ -10,7 +10,7 @@ class AlertaController extends Controller
 {
     public function index(Request $request)
     {
-        return Alerta::with(['projeto', 'tipoDisparo'])
+        return Alerta::with(['projeto', 'tiposDisparo'])
             ->when($request->query('projeto_id'), fn ($q, $id) => $q->where('projeto_id', $id))
             ->orderBy('nome')
             ->get();
@@ -18,19 +18,31 @@ class AlertaController extends Controller
 
     public function store(Request $request)
     {
-        return response()->json(Alerta::create($this->validar($request)), 201);
+        $dados = $this->validar($request);
+        $canais = $dados['tipos_disparo'] ?? [];
+        unset($dados['tipos_disparo']);
+
+        $alerta = Alerta::create($dados);
+        $alerta->tiposDisparo()->sync($canais);
+
+        return response()->json($alerta->load(['projeto', 'tiposDisparo']), 201);
     }
 
     public function show(Alerta $alerta)
     {
-        return $alerta->load(['projeto', 'tipoDisparo']);
+        return $alerta->load(['projeto', 'tiposDisparo']);
     }
 
     public function update(Request $request, Alerta $alerta)
     {
-        $alerta->update($this->validar($request, $alerta));
+        $dados = $this->validar($request, $alerta);
+        $canais = $dados['tipos_disparo'] ?? [];
+        unset($dados['tipos_disparo']);
 
-        return $alerta->load(['projeto', 'tipoDisparo']);
+        $alerta->update($dados);
+        $alerta->tiposDisparo()->sync($canais);
+
+        return $alerta->load(['projeto', 'tiposDisparo']);
     }
 
     public function destroy(Alerta $alerta)
@@ -50,8 +62,11 @@ class AlertaController extends Controller
             ],
             'nome' => ['required', 'string', 'max:255'],
             'importancia' => ['required', 'integer', 'min:0', 'max:10'],
-            'tipo_disparo_id' => ['nullable', 'integer', 'exists:tipos_disparo,id'],
             'expiracao_minutos' => ['nullable', 'integer', 'min:1'],
+
+            // Canais em que este alerta notifica (vários por alerta).
+            'tipos_disparo' => ['array'],
+            'tipos_disparo.*' => ['integer', 'exists:tipos_disparo,id'],
         ]);
     }
 }

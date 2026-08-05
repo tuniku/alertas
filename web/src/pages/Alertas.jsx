@@ -6,8 +6,8 @@ const FORM_VAZIO = {
   codigo: '',
   nome: '',
   importancia: 5,
-  tipo_disparo_id: '',
   expiracao_minutos: '',
+  tipos_disparo: [],
 };
 
 export default function Alertas() {
@@ -40,12 +40,20 @@ export default function Alertas() {
     };
   }
 
+  function alternarCanal(id) {
+    setForm((atual) => ({
+      ...atual,
+      tipos_disparo: atual.tipos_disparo.includes(id)
+        ? atual.tipos_disparo.filter((x) => x !== id)
+        : [...atual.tipos_disparo, id],
+    }));
+  }
+
   async function salvar(e) {
     e.preventDefault();
     setErro('');
     const payload = {
       ...form,
-      tipo_disparo_id: form.tipo_disparo_id || null,
       expiracao_minutos: form.expiracao_minutos || null,
     };
     try {
@@ -78,8 +86,8 @@ export default function Alertas() {
       codigo: a.codigo,
       nome: a.nome,
       importancia: a.importancia,
-      tipo_disparo_id: a.tipo_disparo_id || '',
       expiracao_minutos: a.expiracao_minutos || '',
+      tipos_disparo: (a.tipos_disparo || []).map((t) => t.id),
     });
   }
 
@@ -110,15 +118,6 @@ export default function Alertas() {
           <input type="number" min="0" max="10" {...campo('importancia')} required />
         </label>
         <label>
-          Tipo de disparo
-          <select {...campo('tipo_disparo_id')}>
-            <option value="">(definir depois)</option>
-            {tipos.map((t) => (
-              <option key={t.id} value={t.id}>{t.nome}</option>
-            ))}
-          </select>
-        </label>
-        <label>
           Expiração da deduplicação (min)
           <input
             type="number"
@@ -127,6 +126,32 @@ export default function Alertas() {
             placeholder="vazio = nunca expira"
           />
         </label>
+
+        {/* Vários canais por alerta: um alerta crítico pode postar no
+            Discord e, futuramente, acender a lâmpada ao mesmo tempo. */}
+        <div className="campo-largo">
+          <span className="rotulo">Notificar em</span>
+          {tipos.length === 0 ? (
+            <small className="muted">
+              Nenhum tipo de disparo cadastrado ainda — cadastre um em "Tipos de disparo".
+            </small>
+          ) : (
+            <div className="lista-checkbox">
+              {tipos.map((t) => (
+                <label key={t.id} className="checkbox">
+                  <input
+                    type="checkbox"
+                    checked={form.tipos_disparo.includes(t.id)}
+                    onChange={() => alternarCanal(t.id)}
+                  />
+                  {t.nome}
+                  {!t.ativo && <span className="badge fechado">inativo</span>}
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+
         <div className="form-acoes">
           <button type="submit">{editandoId ? 'Salvar alteração' : 'Adicionar'}</button>
           {editandoId && (
@@ -153,6 +178,7 @@ export default function Alertas() {
             <th>Nome</th>
             <th>Importância</th>
             <th>Expiração (min)</th>
+            <th>Notifica em</th>
             <th className="acoes">Ações</th>
           </tr>
         </thead>
@@ -168,6 +194,11 @@ export default function Alertas() {
                 </span>
               </td>
               <td>{a.expiracao_minutos ?? '—'}</td>
+              <td>
+                {a.tipos_disparo?.length
+                  ? a.tipos_disparo.map((t) => t.nome).join(', ')
+                  : '—'}
+              </td>
               <td className="acoes">
                 <button className="secundario" onClick={() => editar(a)}>Editar</button>
                 <button className="perigo" onClick={() => excluir(a)}>Excluir</button>
@@ -176,7 +207,7 @@ export default function Alertas() {
           ))}
           {alertas.length === 0 && (
             <tr>
-              <td colSpan="6" className="vazio">Nenhum alerta cadastrado.</td>
+              <td colSpan="7" className="vazio">Nenhum alerta cadastrado.</td>
             </tr>
           )}
         </tbody>

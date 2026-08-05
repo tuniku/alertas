@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Alerta extends Model
@@ -15,7 +16,6 @@ class Alerta extends Model
         'codigo',
         'nome',
         'importancia',
-        'tipo_disparo_id',
         'expiracao_minutos',
     ];
 
@@ -32,9 +32,14 @@ class Alerta extends Model
         return $this->belongsTo(Projeto::class);
     }
 
-    public function tipoDisparo(): BelongsTo
+    /**
+     * Canais em que este alerta notifica. Vários por alerta: um alerta
+     * crítico pode postar no Discord e acender a lâmpada ao mesmo tempo.
+     */
+    public function tiposDisparo(): BelongsToMany
     {
-        return $this->belongsTo(TipoDisparo::class);
+        return $this->belongsToMany(TipoDisparo::class, 'alerta_tipo_disparo')
+            ->withTimestamps();
     }
 
     public function logs(): HasMany

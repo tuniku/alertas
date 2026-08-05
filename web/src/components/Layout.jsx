@@ -25,6 +25,7 @@ export default function Layout() {
           <NavLink to="/logs">Histórico (log)</NavLink>
           <NavLink to="/projetos">Projetos</NavLink>
           <NavLink to="/alertas">Alertas</NavLink>
+          <NavLink to="/tipos-disparo">Tipos de disparo</NavLink>
           <NavLink to="/usuarios">Usuários</NavLink>
         </nav>
         <div className="sidebar-footer">

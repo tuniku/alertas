@@ -34,7 +34,12 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::apiResource('usuarios', UsuarioController::class)
         ->parameters(['usuarios' => 'usuario']);
 
-    Route::get('/tipos-disparo', [TipoDisparoController::class, 'index']);
+    // Metadados dos drivers disponíveis — precisa vir antes do
+    // apiResource, senão "drivers" seria interpretado como um {id}.
+    Route::get('/tipos-disparo/drivers', [TipoDisparoController::class, 'drivers']);
+    Route::post('/tipos-disparo/{tipoDisparo}/testar', [TipoDisparoController::class, 'testar']);
+    Route::apiResource('tipos-disparo', TipoDisparoController::class)
+        ->parameters(['tipos-disparo' => 'tipoDisparo']);
 
     Route::get('/alertas-ativos', [AlertaAtivoController::class, 'index']);
     Route::post('/alertas-ativos/{alertaAtivo}/fechar', [AlertaAtivoController::class, 'fechar']);
