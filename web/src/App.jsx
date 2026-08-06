@@ -6,6 +6,8 @@ import Logs from './pages/Logs';
 import Projetos from './pages/Projetos';
 import Alertas from './pages/Alertas';
 import TiposDisparo from './pages/TiposDisparo';
+import Leads from './pages/Leads';
+import ConfiguracaoLeads from './pages/ConfiguracaoLeads';
 import Usuarios from './pages/Usuarios';
 
 function RequireAuth({ children }) {
@@ -30,6 +32,8 @@ export default function App() {
         <Route path="projetos" element={<Projetos />} />
         <Route path="alertas" element={<Alertas />} />
         <Route path="tipos-disparo" element={<TiposDisparo />} />
+        <Route path="leads" element={<Leads />} />
+        <Route path="configuracao-leads" element={<ConfiguracaoLeads />} />
         <Route path="usuarios" element={<Usuarios />} />
       </Route>
       <Route path="*" element={<Navigate to="/" replace />} />

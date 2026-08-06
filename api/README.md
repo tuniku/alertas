@@ -42,6 +42,8 @@ O `docker-compose.yml` deste repositório sobe só o MySQL (porta 3306) e, opcio
 | `notificacao_logs` | Cada tentativa de notificação, com sucesso ou erro |
 | `users` | Usuários do painel (auth padrão Laravel + Sanctum) |
 | `jobs` / `failed_jobs` | Fila de notificações (driver `database`) |
+| `leads` | Leads recebidos do FunnelsFlow (módulo separado, ver abaixo) |
+| `configuracoes` | Configurações globais chave/valor (hoje só o módulo de leads) |
 
 Decisões de modelagem e o porquê de cada uma:
 
@@ -70,6 +72,12 @@ Canais disponíveis hoje: **Discord** (webhook), **Telegram** (bot, ver [`docs/T
 Ao **fechar** um alerta ativo, os canais que implementam `NotificadorReversivel` recebem uma ação de encerramento — hoje só a Tuya, que apaga a lâmpada. Se outro alerta ainda ativo usar o mesmo canal, a lâmpada não apaga: passa a exibir a cor do mais grave que restou.
 
 Cada tentativa fica registrada em `notificacao_logs` (sucesso ou mensagem de erro), e a tela "Tipos de disparo" tem um botão **Testar** que envia uma notificação fictícia para validar a configuração sem esperar um alerta real.
+
+## Leads (FunnelsFlow)
+
+Módulo independente do de alertas: recebe leads do webhook de saída do [FunnelsFlow](https://funnelsflow.pro) em `POST /api/leads/webhook`, grava na tabela `leads` e posta em um canal do Discord próprio. Tem endpoint, tabela, configuração e canal separados — a única coisa em comum com os alertas é a fila.
+
+Configuração e detalhes em [`docs/LEADS.md`](docs/LEADS.md).
 
 ## Endpoint público de disparo
 

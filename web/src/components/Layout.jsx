@@ -26,6 +26,10 @@ export default function Layout() {
           <NavLink to="/projetos">Projetos</NavLink>
           <NavLink to="/alertas">Alertas</NavLink>
           <NavLink to="/tipos-disparo">Tipos de disparo</NavLink>
+          <span className="nav-grupo">Leads</span>
+          <NavLink to="/leads">Leads recebidos</NavLink>
+          <NavLink to="/configuracao-leads">Configuração de leads</NavLink>
+          <span className="nav-grupo">Sistema</span>
           <NavLink to="/usuarios">Usuários</NavLink>
         </nav>
         <div className="sidebar-footer">
