@@ -7,6 +7,12 @@ Thumbs.db
 # Segredos de produção (fica só no servidor, nunca no git)
 .env
 
+# Exports de coleção do Postman usados como referência durante o
+# desenvolvimento (ex.: a API da Tuya). Ficam na pasta local, fora do
+# repositório — podem conter credenciais no environment exportado junto.
+*.postman_collection.json
+*.postman_environment.json
+
 # As pastas api/ e web/ têm seus próprios .gitignore para vendor/,
 # node_modules/, .env etc. — este arquivo cobre o que é comum aos dois
 # e os segredos usados pelo docker-compose.prod.yml na raiz.
