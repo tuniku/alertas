@@ -4,18 +4,20 @@ namespace App\Notificacoes;
 
 use App\Notificacoes\Drivers\DiscordNotificador;
 use App\Notificacoes\Drivers\TelegramNotificador;
+use App\Notificacoes\Drivers\TuyaNotificador;
 use InvalidArgumentException;
 
 /**
- * Ponto único de registro dos canais disponíveis. Para adicionar
- * e-mail ou Tuya: criar a classe do driver implementando Notificador e
- * acrescentar uma linha no array abaixo.
+ * Ponto único de registro dos canais disponíveis. Para adicionar um
+ * canal novo (e-mail, WhatsApp, sirene...): criar a classe do driver
+ * implementando Notificador e acrescentar uma linha no array abaixo.
  */
 class NotificadorFactory
 {
     private const DRIVERS = [
         'discord' => DiscordNotificador::class,
         'telegram' => TelegramNotificador::class,
+        'tuya' => TuyaNotificador::class,
     ];
 
     public static function criar(string $driver): Notificador

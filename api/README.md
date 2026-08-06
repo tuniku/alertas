@@ -65,7 +65,9 @@ php artisan queue:work
 
 Sem o worker rodando, os jobs ficam acumulados na tabela `jobs` e nada é enviado. Em produção há um container `worker` dedicado (ver `docker-compose.prod.yml`).
 
-Canais disponíveis hoje: **Discord** (webhook) e **Telegram** (bot) — a configuração do lado do Telegram está em [`docs/TELEGRAM.md`](docs/TELEGRAM.md). Para adicionar e-mail, Tuya e outros, veja [`docs/NOVO-DRIVER.md`](docs/NOVO-DRIVER.md) — é uma classe nova e uma linha na factory, sem migration nem alteração no frontend.
+Canais disponíveis hoje: **Discord** (webhook), **Telegram** (bot, ver [`docs/TELEGRAM.md`](docs/TELEGRAM.md)) e **Tuya** (lâmpada inteligente que acende na cor da severidade, ver [`docs/TUYA.md`](docs/TUYA.md)). Para adicionar e-mail e outros, veja [`docs/NOVO-DRIVER.md`](docs/NOVO-DRIVER.md) — é uma classe nova e uma linha na factory, sem migration nem alteração no frontend.
+
+Ao **fechar** um alerta ativo, os canais que implementam `NotificadorReversivel` recebem uma ação de encerramento — hoje só a Tuya, que apaga a lâmpada. Se outro alerta ainda ativo usar o mesmo canal, a lâmpada não apaga: passa a exibir a cor do mais grave que restou.
 
 Cada tentativa fica registrada em `notificacao_logs` (sucesso ou mensagem de erro), e a tela "Tipos de disparo" tem um botão **Testar** que envia uma notificação fictícia para validar a configuração sem esperar um alerta real.
 

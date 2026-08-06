@@ -9,7 +9,15 @@ const ROTULOS_CAMPO = {
   webhook_url: 'URL do webhook',
   bot_token: 'Token do bot',
   chat_id: 'ID do chat',
+  regiao: 'Região (data center)',
+  access_id: 'Access ID / Client ID',
+  access_secret: 'Access Secret',
+  device_id: 'ID do dispositivo',
 };
+
+// Campos que guardam segredo: renderizados como senha para não ficarem
+// à mostra na tela. O valor continua sendo salvo normalmente.
+const CAMPOS_SECRETOS = ['access_secret', 'bot_token'];
 
 const AJUDA_CAMPO = {
   webhook_url:
@@ -19,6 +27,14 @@ const AJUDA_CAMPO = {
   chat_id:
     'Adicione o bot ao grupo/canal (como admin, se for canal), envie uma mensagem lá e abra ' +
     'https://api.telegram.org/bot<TOKEN>/getUpdates para ver o chat.id. Grupos e canais têm id negativo.',
+  regiao:
+    'Data center da sua conta Tuya: us, eu, cn ou in. Precisa ser o mesmo do projeto na Tuya IoT Platform.',
+  access_id:
+    'Tuya IoT Platform → Cloud → seu projeto → Overview → Access ID/Client ID.',
+  access_secret:
+    'Na mesma tela do Access ID. É um segredo — fica salvo apenas no banco deste sistema.',
+  device_id:
+    'Tuya IoT Platform → Cloud → seu projeto → Devices → coluna Device ID.',
 };
 
 // Placeholder por campo, com o mesmo critério dos rótulos: um campo sem
@@ -27,6 +43,9 @@ const PLACEHOLDER_CAMPO = {
   webhook_url: 'https://discord.com/api/webhooks/...',
   bot_token: '123456789:AAH...',
   chat_id: '-1001234567890',
+  regiao: 'us',
+  access_id: 'vww4v98rdk8pructtp9e',
+  device_id: 'ebf20a7fd116870225ercg',
 };
 
 export default function TiposDisparo() {
@@ -114,9 +133,9 @@ export default function TiposDisparo() {
     <div>
       <h2>Tipos de disparo</h2>
       <p className="muted-left">
-        Cada tipo é um destino configurado (um canal do Discord, um chat do
-        Telegram e, futuramente, e-mail ou uma lâmpada). Um alerta pode usar
-        vários ao mesmo tempo.
+        Cada tipo é um destino configurado: um canal do Discord, um chat do
+        Telegram ou uma lâmpada da Tuya. Um alerta pode usar vários ao mesmo
+        tempo.
       </p>
 
       <form className="form-grid" onSubmit={salvar}>
@@ -125,7 +144,7 @@ export default function TiposDisparo() {
           <input
             value={form.nome}
             onChange={(e) => setForm({ ...form, nome: e.target.value })}
-            placeholder="ex.: Discord #alertas-carbel, Telegram Suporte"
+            placeholder="ex.: Discord #alertas-carbel, Lâmpada do escritório"
             required
           />
         </label>
@@ -163,6 +182,7 @@ export default function TiposDisparo() {
           <label key={campo} className="campo-largo">
             {ROTULOS_CAMPO[campo] || campo}
             <input
+              type={CAMPOS_SECRETOS.includes(campo) ? 'password' : 'text'}
               value={form.configuracao[campo] || ''}
               onChange={(e) =>
                 setForm({

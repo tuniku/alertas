@@ -1,13 +1,14 @@
 # Como adicionar um novo canal de notificação
 
-O sistema já está preparado para e-mail, Tuya e o que mais vier. Adicionar um canal novo é **criar uma classe e registrar uma linha** — nada de migration, nada de mudança no frontend, nada de mexer nos controllers.
+O sistema já está preparado para e-mail e o que mais vier. Adicionar um canal novo é **criar uma classe e registrar uma linha** — nada de migration, nada de mudança no frontend, nada de mexer nos controllers.
 
-Hoje existem dois drivers implementados, e vale olhar os dois antes de escrever o terceiro:
+Hoje existem três drivers implementados, e vale olhar o mais parecido com o seu caso antes de escrever o próximo:
 
 | Driver | Arquivo | Serve de referência para |
 |---|---|---|
 | Discord | `app/Notificacoes/Drivers/DiscordNotificador.php` | Um único campo de configuração (a URL do webhook já embute o destino); mensagem rica (embed com cor por severidade) |
 | Telegram | `app/Notificacoes/Drivers/TelegramNotificador.php` | Vários campos de configuração (token + destino); texto com marcação limitada; erro lido do corpo da resposta, não do status HTTP |
+| Tuya | `app/Notificacoes/Drivers/TuyaNotificador.php` | Canal que **aciona um dispositivo** em vez de enviar texto; autenticação em duas etapas com token de vida curta em cache; requisição assinada com HMAC |
 
 ## Passo 1 — criar o driver
 
@@ -99,6 +100,26 @@ const PLACEHOLDER_CAMPO = { /* ... */ destinatario: 'suporte@empresa.com.br' };
 
 É cosmético: sem isso o driver funciona igual, só fica com rótulo técnico e sem texto de ajuda.
 
+## Passo 4 (opcional) — ação ao fechar o alerta
+
+Se o seu canal tem algo a **desfazer** quando o alerta ativo é fechado (apagar uma lâmpada, desligar um relé, silenciar uma sirene), implemente também a interface `NotificadorReversivel`:
+
+```php
+class SeuNotificador implements Notificador, NotificadorReversivel
+{
+    // ...
+
+    public function encerrar(MensagemAlerta $mensagem, TipoDisparo $tipoDisparo): void
+    {
+        // desfaz o efeito
+    }
+}
+```
+
+É uma interface separada de propósito: uma mensagem já postada no Discord não some, então obrigar todo driver a declarar um `encerrar()` vazio seria ruído. Quem implementa é acionado pelo `AlertaAtivoController` no fechamento; quem não implementa é ignorado, sem nenhuma condição por nome de driver no código.
+
+Detalhe importante do fluxo, implementado no `EncerrarNotificacaoAlerta`: antes de encerrar, o job verifica se **outro alerta ainda ativo usa o mesmo canal**. Se usa, em vez de encerrar ele reenvia a notificação do mais grave que restou — do contrário, fechar um alerta apagaria o aviso de um problema ainda aberto.
+
 ## O que a `MensagemAlerta` oferece
 
 O driver não conhece Eloquent nem a estrutura das tabelas — recebe só um objeto neutro:
@@ -114,9 +135,11 @@ O driver não conhece Eloquent nem a estrutura das tabelas — recebe só um obj
 | `recebidoEm` | Data/hora em que o alerta ativo foi criado |
 | `nivel()` | "Crítico" (≥8), "Atenção" (≥4) ou "Informativo" |
 
-## Caso especial: Tuya (lâmpada)
+## Canais que não são mensagem
 
-O driver da Tuya não "envia mensagem" — aciona um dispositivo. Ainda assim se encaixa na mesma interface: `enviar()` faz a chamada à API da Tuya, e a `configuracao` guarda `device_id`, `access_id` e `access_secret`. A `importancia` da mensagem serve para escolher a cor (o `DiscordNotificador::cor()` e o `TelegramNotificador::icone()` fazem exatamente isso, e valem como referência).
+O driver da Tuya não "envia mensagem" — acende uma lâmpada. Mesmo assim coube na interface sem nenhuma adaptação: `enviar()` chama a API da Tuya, a `configuracao` guarda as credenciais e o `device_id`, e a `importancia` vira cor. Se o seu canal novo for uma sirene, um relé ou um display, o molde é esse — veja [`TUYA.md`](TUYA.md).
+
+Vale notar o que os três drivers fazem com a `importancia`: `DiscordNotificador::cor()` escolhe a cor do embed, `TelegramNotificador::icone()` escolhe o emoji e `TuyaNotificador::cor()` escolhe o HSV da lâmpada. A escala de severidade é a mesma (`MensagemAlerta::nivel()`), só a representação muda.
 
 ## Quando a notificação é disparada
 
