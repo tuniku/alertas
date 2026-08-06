@@ -10,3 +10,4 @@ Thumbs.db
 # As pastas api/ e web/ têm seus próprios .gitignore para vendor/,
 # node_modules/, .env etc. — este arquivo cobre o que é comum aos dois
 # e os segredos usados pelo docker-compose.prod.yml na raiz.
+*.postman_collection.json
