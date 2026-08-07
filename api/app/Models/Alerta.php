@@ -17,6 +17,7 @@ class Alerta extends Model
         'nome',
         'importancia',
         'expiracao_minutos',
+        'disponivel_app',
     ];
 
     protected function casts(): array
@@ -24,6 +25,7 @@ class Alerta extends Model
         return [
             'importancia' => 'integer',
             'expiracao_minutos' => 'integer',
+            'disponivel_app' => 'boolean',
         ];
     }
 

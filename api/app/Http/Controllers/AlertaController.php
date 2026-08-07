@@ -64,6 +64,9 @@ class AlertaController extends Controller
             'importancia' => ['required', 'integer', 'min:0', 'max:10'],
             'expiracao_minutos' => ['nullable', 'integer', 'min:1'],
 
+            // Faz o alerta aparecer no aplicativo Android.
+            'disponivel_app' => ['boolean'],
+
             // Canais em que este alerta notifica (vários por alerta).
             'tipos_disparo' => ['array'],
             'tipos_disparo.*' => ['integer', 'exists:tipos_disparo,id'],

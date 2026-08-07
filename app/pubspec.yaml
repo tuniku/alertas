@@ -1,0 +1,39 @@
+name: alertas_app
+description: "Aplicativo Android do sistema de alertas da Pentagrama."
+publish_to: 'none'
+
+# versionName / versionCode do Android saem daqui: 1.0.0 é o que o
+# usuário vê, e o +1 é o número interno que precisa subir a cada APK novo
+# publicado (o Android recusa instalar por cima uma versão com número
+# menor ou igual).
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.12.2
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  cupertino_icons: ^1.0.8
+
+  # Cliente HTTP oficial do time do Dart. Suficiente aqui: a API é REST
+  # simples com token Bearer, sem necessidade de interceptors elaborados.
+  http: ^1.2.2
+
+  # Guarda o token de sessão entre aberturas do app. Usa SharedPreferences
+  # no Android — adequado para um token de sessão que o usuário pode
+  # refazer com um login.
+  shared_preferences: ^2.3.3
+
+  # Formatação de datas em pt_BR nas listas.
+  intl: ^0.19.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

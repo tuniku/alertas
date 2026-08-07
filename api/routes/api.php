@@ -3,6 +3,7 @@
 use App\Http\Controllers\AlertaAtivoController;
 use App\Http\Controllers\AlertaController;
 use App\Http\Controllers\AlertaLogController;
+use App\Http\Controllers\AppController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConfiguracaoLeadController;
 use App\Http\Controllers\EventoController;
@@ -58,6 +59,13 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/leads/origens', [LeadController::class, 'origens']);
     Route::get('/leads', [LeadController::class, 'index']);
     Route::get('/leads/{lead}', [LeadController::class, 'show']);
+
+    // Aplicativo Android. Endpoints próprios (e não parâmetros nos do
+    // painel) para que o filtro por "disponivel_app" seja obrigatório,
+    // e não algo que o cliente possa esquecer de enviar.
+    Route::get('/app/alertas-ativos', [AppController::class, 'ativos']);
+    Route::get('/app/logs', [AppController::class, 'logs']);
+    Route::post('/app/alertas-ativos/{alertaAtivo}/fechar', [AppController::class, 'fechar']);
 
     Route::get('/configuracoes/leads', [ConfiguracaoLeadController::class, 'show']);
     Route::put('/configuracoes/leads', [ConfiguracaoLeadController::class, 'update']);

@@ -1,0 +1,17 @@
+gradle-wrapper.jar
+/.gradle
+# Cache do compilador Kotlin: guarda logs e perfis com caminhos absolutos
+# da máquina (foi onde apareceram os erros do D: durante o setup).
+/.kotlin
+/captures/
+/gradlew
+/gradlew.bat
+/local.properties
+GeneratedPluginRegistrant.java
+.cxx/
+
+# Remember to never publicly share your keystore.
+# See https://flutter.dev/to/reference-keystore
+key.properties
+**/*.keystore
+**/*.jks

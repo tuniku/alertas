@@ -7,6 +7,7 @@ const FORM_VAZIO = {
   nome: '',
   importancia: 5,
   expiracao_minutos: '',
+  disponivel_app: false,
   tipos_disparo: [],
 };
 
@@ -87,6 +88,7 @@ export default function Alertas() {
       nome: a.nome,
       importancia: a.importancia,
       expiracao_minutos: a.expiracao_minutos || '',
+      disponivel_app: !!a.disponivel_app,
       tipos_disparo: (a.tipos_disparo || []).map((t) => t.id),
     });
   }
@@ -124,6 +126,15 @@ export default function Alertas() {
             min="1"
             {...campo('expiracao_minutos')}
             placeholder="vazio = nunca expira"
+          />
+        </label>
+
+        <label className="checkbox-campo">
+          <span>Disponível no aplicativo</span>
+          <input
+            type="checkbox"
+            checked={form.disponivel_app}
+            onChange={(e) => setForm({ ...form, disponivel_app: e.target.checked })}
           />
         </label>
 
@@ -178,6 +189,7 @@ export default function Alertas() {
             <th>Nome</th>
             <th>Importância</th>
             <th>Expiração (min)</th>
+            <th>App</th>
             <th>Notifica em</th>
             <th className="acoes">Ações</th>
           </tr>
@@ -195,6 +207,11 @@ export default function Alertas() {
               </td>
               <td>{a.expiracao_minutos ?? '—'}</td>
               <td>
+                {a.disponivel_app
+                  ? <span className="badge imp-baixa">sim</span>
+                  : <span className="badge fechado">não</span>}
+              </td>
+              <td>
                 {a.tipos_disparo?.length
                   ? a.tipos_disparo.map((t) => t.nome).join(', ')
                   : '—'}
@@ -207,7 +224,7 @@ export default function Alertas() {
           ))}
           {alertas.length === 0 && (
             <tr>
-              <td colSpan="7" className="vazio">Nenhum alerta cadastrado.</td>
+              <td colSpan="8" className="vazio">Nenhum alerta cadastrado.</td>
             </tr>
           )}
         </tbody>

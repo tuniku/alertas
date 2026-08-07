@@ -1,0 +1,34 @@
+import 'package:flutter/material.dart';
+
+import 'api.dart';
+import 'telas/inicio.dart';
+import 'telas/login.dart';
+
+Future<void> main() async {
+  // Necessário porque lemos o token salvo (SharedPreferences, que é
+  // código nativo) antes de montar a primeira tela.
+  WidgetsFlutterBinding.ensureInitialized();
+
+  await Api.instancia.carregarSessao();
+
+  runApp(const AplicativoAlertas());
+}
+
+class AplicativoAlertas extends StatelessWidget {
+  const AplicativoAlertas({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      title: 'Alertas',
+      debugShowCheckedModeBanner: false,
+      theme: ThemeData(
+        colorScheme: ColorScheme.fromSeed(seedColor: const Color(0xFF1D4ED8)),
+        useMaterial3: true,
+      ),
+      // Se já havia token salvo, o app abre direto na lista; o usuário
+      // só reencontra o login se sair ou se o token for recusado.
+      home: Api.instancia.autenticado ? const TelaInicio() : const TelaLogin(),
+    );
+  }
+}
