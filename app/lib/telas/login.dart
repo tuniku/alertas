@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../api.dart';
 import '../modelos.dart';
 import 'inicio.dart';
+import 'servidor.dart';
 
 class TelaLogin extends StatefulWidget {
   const TelaLogin({super.key});
@@ -22,6 +23,16 @@ class _TelaLoginState extends State<TelaLogin> {
     _email.dispose();
     _senha.dispose();
     super.dispose();
+  }
+
+  Future<void> _trocarServidor() async {
+    final mudou = await showDialog<bool>(
+      context: context,
+      builder: (_) => const DialogoServidor(),
+    );
+
+    // setState para a tela refletir o endereço novo no rodapé.
+    if (mudou == true && mounted) setState(() => _erro = null);
   }
 
   Future<void> _entrar() async {
@@ -107,6 +118,20 @@ class _TelaLoginState extends State<TelaLogin> {
                           child: CircularProgressIndicator(strokeWidth: 2),
                         )
                       : const Text('Entrar'),
+                ),
+                const SizedBox(height: 24),
+
+                // O endereço fica sempre à vista: é a primeira coisa a
+                // conferir quando o login falha, e evita a dúvida de
+                // "estou testando produção ou desenvolvimento?".
+                TextButton.icon(
+                  onPressed: _carregando ? null : _trocarServidor,
+                  icon: const Icon(Icons.dns_outlined, size: 18),
+                  label: Text(
+                    Api.instancia.baseUrl,
+                    textAlign: TextAlign.center,
+                    style: Theme.of(context).textTheme.bodySmall,
+                  ),
                 ),
               ],
             ),

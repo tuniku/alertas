@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Jobs\EnviarNotificacaoAlerta;
+use App\Jobs\EnviarPushAlerta;
 use App\Models\Alerta;
 use App\Models\AlertaAtivo;
 use App\Models\AlertaLog;
@@ -97,6 +98,13 @@ class EventoController extends Controller
         // poderia buscar um alerta_ativo que ainda não existe no banco.
         if ($ativoCriado) {
             $this->enfileirarNotificacoes($alerta, $ativoCriado->id, $dados);
+
+            // Push é automático para todo alerta disponível no app — não
+            // é um tipo de disparo selecionável como Discord/Telegram/Tuya,
+            // por isso fica fora do enfileirarNotificacoes() acima.
+            if ($alerta->disponivel_app) {
+                EnviarPushAlerta::dispatch($ativoCriado->id, $dados['descricao'] ?? null);
+            }
         }
 
         return response()->json($resposta, $status);

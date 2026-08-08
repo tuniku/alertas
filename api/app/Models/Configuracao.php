@@ -28,6 +28,12 @@ class Configuracao extends Model
 
     public const LEADS_TOKEN = 'leads_token';
 
+    /**
+     * JSON da conta de serviço do Firebase (Contas de serviço → Gerar
+     * nova chave privada), usado pelo servidor para enviar push via FCM.
+     */
+    public const PUSH_FCM_SERVICE_ACCOUNT = 'push_fcm_service_account';
+
     public static function obter(string $chave, ?string $padrao = null): ?string
     {
         return static::find($chave)?->valor ?? $padrao;

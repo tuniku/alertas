@@ -1,8 +1,12 @@
+import 'dart:async';
+
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
 import '../api.dart';
 import '../modelos.dart';
+import '../notificacoes.dart';
 import 'login.dart';
 
 final _formato = DateFormat('dd/MM/yyyy HH:mm');
@@ -25,7 +29,49 @@ class TelaInicio extends StatefulWidget {
 class _TelaInicioState extends State<TelaInicio> {
   int _aba = 0;
 
+  // Chaves para alcançar o estado das abas diretamente (recarregar()) a
+  // partir do listener de push, sem precisar de um gerenciador de
+  // estado só para isso — o app inteiro já é pequeno o bastante para
+  // GlobalKey resolver sem custo de legibilidade.
+  final _chaveAtivos = GlobalKey<_AbaAtivosState>();
+  final _chaveHistorico = GlobalKey<_AbaHistoricoState>();
+
+  StreamSubscription<RemoteMessage>? _inscricaoPush;
+
+  @override
+  void initState() {
+    super.initState();
+
+    // Idempotente no servidor (upsert por token): chamar aqui cobre
+    // tanto quem acabou de logar quanto quem reabriu o app com uma
+    // sessão salva.
+    Notificacoes.registrar();
+
+    // Com o app em primeiro plano, o Android NÃO mostra a notificação
+    // sozinho — quem decide o que fazer é o app. Aqui: atualiza as duas
+    // listas (o push pode ser de um alerta que já apareceria na aba
+    // oposta à atual) e avisa com um SnackBar.
+    _inscricaoPush = FirebaseMessaging.onMessage.listen(_aoReceberPush);
+  }
+
+  @override
+  void dispose() {
+    _inscricaoPush?.cancel();
+    super.dispose();
+  }
+
+  void _aoReceberPush(RemoteMessage mensagem) {
+    _chaveAtivos.currentState?.recarregar();
+    _chaveHistorico.currentState?.recarregar();
+
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(mensagem.notification?.title ?? 'Novo alerta')),
+    );
+  }
+
   Future<void> _sair() async {
+    await Notificacoes.desregistrar();
     await Api.instancia.sair();
 
     if (!mounted) return;
@@ -52,7 +98,10 @@ class _TelaInicioState extends State<TelaInicio> {
         index: _aba,
         // IndexedStack em vez de trocar o widget: assim a lista já
         // carregada não é descartada ao alternar de aba.
-        children: const [_AbaAtivos(), _AbaHistorico()],
+        children: [
+          _AbaAtivos(key: _chaveAtivos),
+          _AbaHistorico(key: _chaveHistorico),
+        ],
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _aba,
@@ -75,7 +124,7 @@ class _TelaInicioState extends State<TelaInicio> {
 }
 
 class _AbaAtivos extends StatefulWidget {
-  const _AbaAtivos();
+  const _AbaAtivos({super.key});
 
   @override
   State<_AbaAtivos> createState() => _AbaAtivosState();
@@ -90,6 +139,11 @@ class _AbaAtivosState extends State<_AbaAtivos> {
     super.initState();
     _carregar();
   }
+
+  /// Chamado de fora (pela tela pai) quando chega um push com o app
+  /// aberto, para a lista refletir o alerta novo sem precisar de um
+  /// "puxar para atualizar" manual.
+  void recarregar() => _carregar();
 
   Future<void> _carregar() async {
     try {
@@ -203,7 +257,7 @@ class _AbaAtivosState extends State<_AbaAtivos> {
 }
 
 class _AbaHistorico extends StatefulWidget {
-  const _AbaHistorico();
+  const _AbaHistorico({super.key});
 
   @override
   State<_AbaHistorico> createState() => _AbaHistoricoState();
@@ -218,6 +272,8 @@ class _AbaHistoricoState extends State<_AbaHistorico> {
     super.initState();
     _carregar();
   }
+
+  void recarregar() => _carregar();
 
   Future<void> _carregar() async {
     try {

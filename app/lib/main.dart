@@ -1,3 +1,4 @@
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
 
 import 'api.dart';
@@ -8,6 +9,11 @@ Future<void> main() async {
   // Necessário porque lemos o token salvo (SharedPreferences, que é
   // código nativo) antes de montar a primeira tela.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // O google-services.json (baixado no Firebase Console) já tem tudo
+  // que initializeApp() precisa — sem parâmetros aqui, diferente do
+  // Flutter para iOS/web.
+  await Firebase.initializeApp();
 
   await Api.instancia.carregarSessao();
 

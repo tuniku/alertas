@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "244123607536",
+    "project_id": "alertas-pentagrama",
+    "storage_bucket": "alertas-pentagrama.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:244123607536:android:f85bbf386f6512bb59fd35",
+        "android_client_info": {
+          "package_name": "com.pentagrama.alertas_app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCbqSKHNSiOTUKjVL7_p1dryTkzjvB1l2k"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

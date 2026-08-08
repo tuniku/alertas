@@ -6,6 +6,12 @@
          a uma permissão faltando. -->
     <uses-permission android:name="android.permission.INTERNET"/>
 
+    <!-- Obrigatória a partir do Android 13 (API 33) para o app mostrar
+         qualquer notificação, inclusive as de push do FCM. Em versões
+         anteriores essa permissão nem existe, mas declará-la não tem
+         efeito colateral nelas. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+
     <application
         android:label="Alertas"
         android:name="${applicationName}"

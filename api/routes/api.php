@@ -6,6 +6,8 @@ use App\Http\Controllers\AlertaLogController;
 use App\Http\Controllers\AppController;
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ConfiguracaoLeadController;
+use App\Http\Controllers\ConfiguracaoPushController;
+use App\Http\Controllers\DispositivoController;
 use App\Http\Controllers\EventoController;
 use App\Http\Controllers\LeadController;
 use App\Http\Controllers\LeadWebhookController;
@@ -67,8 +69,18 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::get('/app/logs', [AppController::class, 'logs']);
     Route::post('/app/alertas-ativos/{alertaAtivo}/fechar', [AppController::class, 'fechar']);
 
+    // Registro do token do FCM, para push. store faz o upsert por token
+    // (troca de dono se o aparelho já estava registrado por outro
+    // usuário); destroy é chamado ao sair do app.
+    Route::post('/app/dispositivo', [DispositivoController::class, 'store']);
+    Route::delete('/app/dispositivo', [DispositivoController::class, 'destroy']);
+
     Route::get('/configuracoes/leads', [ConfiguracaoLeadController::class, 'show']);
     Route::put('/configuracoes/leads', [ConfiguracaoLeadController::class, 'update']);
     Route::post('/configuracoes/leads/token', [ConfiguracaoLeadController::class, 'gerarToken']);
     Route::post('/configuracoes/leads/testar', [ConfiguracaoLeadController::class, 'testar']);
+
+    Route::get('/configuracoes/push', [ConfiguracaoPushController::class, 'show']);
+    Route::put('/configuracoes/push', [ConfiguracaoPushController::class, 'update']);
+    Route::post('/configuracoes/push/testar', [ConfiguracaoPushController::class, 'testar']);
 });

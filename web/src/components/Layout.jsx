@@ -31,6 +31,7 @@ export default function Layout() {
           <NavLink to="/configuracao-leads">Configuração de leads</NavLink>
           <span className="nav-grupo">Sistema</span>
           <NavLink to="/usuarios">Usuários</NavLink>
+          <NavLink to="/configuracao-push">Configuração de push</NavLink>
         </nav>
         <div className="sidebar-footer">
           {usuario && <span>{usuario.name}</span>}
